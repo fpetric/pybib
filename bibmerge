@@ -80,7 +80,10 @@ def action(bib, filename):
         print >> sys.stderr,  "%d records read from %s" % (len(bib), filename)
 
     # for each new bib entry
+    counter_loops = 1
     for be in bib:
+        print("DOING STUF ", counter_loops)
+        counter_loops+=1
         # check against all existing
         for ub in unique:
             if be.match(ub, dthresh=dthresh):
@@ -111,6 +114,6 @@ else:
 	action(bib, '(stdin)');
 			
 
-print >> sys.stderr,  "New bib has %d records, %d duplicates found" % (len(unique), dupcount);
-
+print("New bib has %d records, %d duplicates found" % (len(unique), dupcount))
+input("WAIT HERE")
 unique.write();

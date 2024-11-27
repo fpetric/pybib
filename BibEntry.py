@@ -55,41 +55,41 @@ class BibEntry:
 			print >> sys.stderr, "New entry ", key;
 
 	def __repr__(self):
-		str = '"' + self.getTitle() + '"; ';
+		stringout = '"' + self.getTitle() + '"; ';
 		try:
-			str = str + self.getAuthorsNames();
+			stringout = stringout + self.getAuthorsNames();
 		except:
 			try:
-				str = str + "eds. " + self.getEditorsNames();
+				stringout = stringout + "eds. " + self.getEditorsNames();
 			except:
 				pass;
 		month = self.getMonthName();
 		year = self.getYear();
 		book = self.getBooktitle();
 		if book:
-			str += ", " + book;
+			stringout += ", " + book;
 		if month:
-			str += ", " + month;
+			stringout += ", " + month;
 			if year > 0:
-				str += " " + `year`;
+				stringout += " " + str(year);
 		else:
 			if year > 0:
-				str += ", " + `year`;
-		str += '.';
-		return str;
+				stringout += ", " + str(year);
+		stringout += '.';
+		return stringout;
 
 	def brief(self, fp=sys.stdout):
-		print >> fp, self;
+		print(self)
 
 	def display(self, fp=sys.stdout):
-		print >> fp, "%12s: %s" % ("CiteKey", self.key)
+		print("%12s: %s" % ("CiteKey", self.key))
 		for k in self.fieldDict:
 			if k[0] == '_':
 				continue;
 			if k == 'Author':
-				print >> fp, "%12s: %s" % (k, self.getAuthors())
+				print("%12s: %s" % (k, self.getAuthors()))
 			else:
-				print >> fp, "%12s: %s" % (k, self.fieldDict[k])
+				print("%12s: %s" % (k, self.fieldDict[k]))
 
 	def __getitem__(self, i):
 		if type(i) is str:
@@ -105,7 +105,7 @@ class BibEntry:
 		missing = [];
 		reftype = self.getRefType();
 		if not (reftype in alltypes):
-			raise AttributeError, "bad reference type [%s]" % self.getKey();
+			raise AttributeError("bad reference type [%s]" % self.getKey());
 		for k in required_fields[self.getRefType()]:
 			if not (string.capitalize(k) in keys):
 				missing.append(k);
@@ -157,13 +157,13 @@ class BibEntry:
 
 	def getAuthors(self):
 		if 'Author' in self.fieldDict:
-			l = self.fieldDict['Author'];
+			l = list(self.fieldDict['Author']);
 			if len(l) == 1:
 				return l[0];
 			elif len(l) == 2:
 				return l[0] + " and " + l[1];
 			elif len(l) > 2:
-				return string.join(l[:-1], ", ") + " and " + l[-1];
+				return ", ".join(l[:-1]) + " and " + l[-1];
 		else:
 			return "";
 
@@ -306,6 +306,7 @@ class BibEntry:
 				return False;
 
 	def getYear(self):
+		# print(self.fieldDict)
 		if '_year' in self.fieldDict:
 			return self.fieldDict['_year'];
 		else:
@@ -313,6 +314,7 @@ class BibEntry:
 
 	# return month ordinal in range 1 to 12
 	def getMonth(self):
+		# print(self.fieldDict)
 		if '_month' in self.fieldDict:
 			return self.fieldDict['_month'];
 		else:
@@ -348,7 +350,7 @@ class BibEntry:
 			'december' );
 		m = self.getMonth();
 		if m > 0:
-			return string.capitalize(monthNames[m-1]);
+			return monthNames[m-1].capitalize();
 		else:
 			return "";
 
@@ -359,30 +361,30 @@ class BibEntry:
 	#############################################################3
 
 	def setType(self, value):
-		value = string.lower(value);
+		value = value.lower();
 		if not (value in alltypes):
-			raise AttributeError, "bad reference type [%s]" % self.getKey();
+			raise AttributeError("bad reference type [%s]" % self.getKey());
 		self.reftype = value;
 		self.fieldDict['Type'] = value;
 
 	def setField(self, key, value):
 		key = key.capitalize();
 		if not (key in allfields):
-			raise AttributeError, "bad field <%s> [%s]" % (key, self.getKey());
+			raise AttributeError("bad field <%s> [%s]" % (key, self.getKey()));
 		if key == 'Year':
 			self.fieldDict[key] = value;
 
 			# remove all text like "to appear", just leave the digits
 			year = filter(lambda c : c.isdigit(), value);
 			try:
-				self.fieldDict['_year'] = int(year);
+				self.fieldDict['_year'] = int("".join(year));
 			except:
 				if value.find('appear') > -1:
 					sys.stderr.write("[%s] no year specified, continuing\n" % self.getKey());
 					self.fieldDict['_year'] = 0;
 				else:
 					self.fieldDict['_year'] = -1;
-					raise AttributeError, "[%s] bad year <%s>" % (self.getKey(), value);
+					raise AttributeError("[%s] bad year <%s>" % (self.getKey(), value));
 		elif key == 'Month':
 			# the Month entry has the original string from the file if it is of
 			# nonstandard form, else is None.
@@ -403,7 +405,9 @@ class BibEntry:
 					self.fieldDict['_month'] = self.monthdict[monthname];
 					#print >> sys.stderr, "_month 2 %d" % self.monthdict[monthname];
 					return;
-			raise AttributeError, "bad month [%s]" % self.getKey();
+			raise AttributeError("bad month [%s]" % self.getKey());
+		# elif key == 'Volume':
+		# 	self.fieldDict[key] = int(value);
 		else:
 			self.fieldDict[key] = value;
 		#print >> sys.stderr, "<%s> := <%s>\n" % (key, value)
@@ -491,8 +495,8 @@ class BibEntry:
 			return count;
 
 		# check if each article has the same number of authors
-		l1 = self.getAuthorList();
-		l2 = be.getAuthorList();
+		l1 = list(self.getAuthorList())
+		l2 = list(be.getAuthorList())
 		if len(l1) != len(l2):
 			return 0;
 
@@ -505,24 +509,24 @@ class BibEntry:
 	def matchTitle(self, be, dthresh):
 		# Levenstein distance between two strings
 		def distance(a,b):
-		    c = {}
-		    n = len(a); m = len(b)
+			c = {}
+			n = len(a); m = len(b)
 
-		    for i in range(0,n+1):
-			c[i,0] = i
-		    for j in range(0,m+1):
-			c[0,j] = j
+			for i in range(0,n+1):
+				c[i,0] = i
+			for j in range(0,m+1):
+				c[0,j] = j
 			
-		    for i in range(1,n+1):
-			for j in range(1,m+1):
-			    x = c[i-1,j]+1
-			    y = c[i,j-1]+1
-			    if a[i-1] == b[j-1]:
-				z = c[i-1,j-1]
-			    else:
-				z = c[i-1,j-1]+1
-			    c[i,j] = min(x,y,z)
-		    return c[n,m]
+			for i in range(1,n+1):
+				for j in range(1,m+1):
+					x = c[i-1,j]+1
+					y = c[i,j-1]+1
+					if a[i-1] == b[j-1]:
+						z = c[i-1,j-1]
+					else:
+						z = c[i-1,j-1]+1
+					c[i,j] = min(x,y,z)
+			return c[n,m]
 
 		d = distance( mogrify(self.getTitle()), mogrify(be.getTitle()) );
 
@@ -590,32 +594,39 @@ class BibEntry:
 # return false if both numbers are provided, and they are not equal, otherwise
 # give the benefit of the doubt and return true.
 def fmatch(n1, n2):
-	if (n1 > 0) and (n2 > 0):
-		return n1 == n2;
+	if type(n1) is int:
+		if type(n2) is int:
+			## probably both -1
+			return 1
+		else:
+			return 0
 	else:
-		return 1;
+		if type(n2) is int:
+			return 0
+		else:
+			return n1 == n2
 
 # remove all punctuation marks and white space that people
 # might get wrong
 def mogrify(s):
-	s = string.lower(s);
+	s = s.lower();
 	s = re.sub(r"""[#{}:;,&$ -]""", "", s);
 	return s;
 
 
 allfields = ('_Reftype', 'Address', 'Author', 'Booktitle', 'Chapter', 'Edition',
-	     'Editor', 'Howpublished', 'Institution', 'Journal', 'Month',
-	     'Number', 'Organization', 'Pages', 'Publisher', 'School',
-	     'Series', 'Title', 'Type', 'Volume',
-	     'Year', 'Note', 'Code', 'Url', 'Crossref', 'Annote', 'Abstract', 'Date-added', 'Date-modified', 'Read');
+		 'Editor', 'Howpublished', 'Institution', 'Journal', 'Month',
+		 'Number', 'Organization', 'Pages', 'Publisher', 'School',
+		 'Series', 'Title', 'Type', 'Volume',
+		 'Year', 'Note', 'Code', 'Url', 'Crossref', 'Annote', 'Abstract', 'Date-added', 'Date-modified', 'Read', 'Doi', 'Keywords');
 
 # list of all reference types
 alltypes = ('article', 'book', 'booklet', 'inbook', 'incollection',
-	    'inproceedings', 'manual', 'mastersthesis', 'misc', 'phdthesis',
-	    'proceedings', 'techreport', 'unpublished');
+		'inproceedings', 'manual', 'mastersthesis', 'misc', 'phdthesis',
+		'proceedings', 'techreport', 'unpublished');
 
 # list of additional fields, ignored by the standard BibTeX styles
-ign = ('crossref', 'code', 'url', 'annote', 'abstract');
+ign = ('crossref', 'code', 'url', 'annote', 'abstract', 'doi', 'ISSN');
 
 # lists of required and optional fields for each reference type
 

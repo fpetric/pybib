@@ -64,12 +64,14 @@ if args:
 else:
 	bib.parseFile();
 
-# resolve cross refs and abbreviations			
+# resolve cross refs and abbreviations
+print("Resolving cross ref")		
 bib.resolveCrossRef();
 if resolveAbbrevs:
 	bib.resolveAbbrev();
 
 # output the readable text
+print("Outputing")
 for be in bib:
 	if showBrief:
 		be.brief();

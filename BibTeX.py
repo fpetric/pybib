@@ -83,7 +83,7 @@ class BibTeXEntry(BibEntry.BibEntry):
 
 	def setField(self, field, value):
 		def strStrip(s):
-			s = string.strip(s, ' ');
+			s = s.strip(' ');
 			if (s[0] == '"') and (s[-1] == '"'):
 				return s[1:-1];
 			if (s[0] == '{') and (s[-1] == '}'):
@@ -94,13 +94,13 @@ class BibTeXEntry(BibEntry.BibEntry):
 		# deal specially with author list, convert from bibtex X and Y to
 		# a list for bibentry class
 		if field.lower() in ["author", "editor"]:
-			value = string.split(value, " and ");
+			value = value.split(" and ");
 			value = map(strStrip, value);
 		try:
 			# invoke the superclass
 			BibEntry.BibEntry.setField(self, field, value);
-		except AttributeError, err:
-			sys.stderr.write( "%15s: bad value <%s=%s>" % (self.getKey(), field, value));
+		except AttributeError:
+			sys.stderr.write( "%15s: bad value <%s=%s>" % (self.getKey(), field, value))
 
 class BibTeX(Bibliography.Bibliography):
 
@@ -117,15 +117,17 @@ class BibTeX(Bibliography.Bibliography):
 		s = fp.read();
 		try:
 			nbib = self.parseString(s, ignore=ignore, verbose=verbose);
-		except AttributeError, err:
-			print >> sys.stderr, "Error %s" % err;
+			
+		except AttributeError:
+			# print("Errorrororor")
+			print(sys.stderr)
 
 		self.close(fp);
 		return nbib;
 
 	def display(self):
 		for be in self:
-		        be.display()
+			be.display()
 
 	def write(self, file=sys.stdout, resolve=0):
 		if resolve:
@@ -134,23 +136,24 @@ class BibTeX(Bibliography.Bibliography):
 			dict = None;
 
 		for be in self:
-		        be.write(file, dict)
+			be.write(file, dict)
 
 	def writeStrings(self, file=sys.stdout):
 		for abbrev, value in self.abbrevDict.items():
-		        file.write("@string{ %s = {%s} }\n" % (abbrev, value) );
+			file.write("@string{ %s = {%s} }\n" % (abbrev, value) );
 
 	# resolve BibTeX's cross reference capability
 	def resolveCrossRef(self):
 		for be in self:
 			try:
 				xfref = self.getField('crossref');
+				for f in xfref:
+					if not (f in be):
+						be.setField(f, xfref.getField(f));
 			except:
 				return;
 
-			for f in xref:
-				if not (f in be):
-					be.setField(f, xref.getField(f));
+			
 
 	def parseString(self, s, verbose=0, ignore=False):
 
@@ -165,7 +168,7 @@ class BibTeX(Bibliography.Bibliography):
 				self.inString = s;
 
 			# an iterator for the class, return next character
-			def next(self):
+			def __next__(self):
 				if self.pos >= len(self.inString):
 					raise StopIteration;
 				c = self.inString[self.pos];
@@ -214,7 +217,7 @@ class BibTeX(Bibliography.Bibliography):
 
 				if c == '"':
 					# quote delimited string
-					str = self.next();
+					str = next(self);
 					cp = None;	# prev char
 					for c in self:
 						str += c;
@@ -310,10 +313,10 @@ class BibTeX(Bibliography.Bibliography):
 				return self;
 
 			# return next token
-			def next(self):
+			def __next__(self):
 				#self.lex.show();
 				self.lex.skipwhite();
-				c = self.lex.next();
+				c = next(self.lex);
 
 				t = Token();
 				if c == '@':
@@ -321,7 +324,7 @@ class BibTeX(Bibliography.Bibliography):
 					self.lex.skipwhite();
 					t.val = self.lex.nextword();
 					self.lex.skipwhite();
-					c = self.lex.next();
+					c = next(self.lex);
 					if not ((c == '{') or (c == '(')):
 						print >> sys.stderr, "BAD START OF ENTRY"
 
@@ -347,13 +350,14 @@ class BibTeX(Bibliography.Bibliography):
 			def __init__(self, s, bt):
 				self.tok = BibTokenizer(s);
 				self.bibtex = bt;
+			# print('Initialized bib parser')
 
 			# setup an iterator for the next entry
 			def __iter__(self):
 				return self;
 
 			# return next entry
-			def next(self):
+			def __next__(self):
 
 				def strstrip(s):
 					if s[0] in '"{':
@@ -361,68 +365,75 @@ class BibTeX(Bibliography.Bibliography):
 					else:
 						return s;
 
-				t = self.tok.next();
+				t = next(self.tok);
 				if not t.isentry():
-					raise SyntaxError, self.tok.lex.lineNum;
+					# print("Not entry", t)
+					raise SyntaxError(self.tok.lex.lineNum);
 				if t.val.lower() == 'string':
-					tn = self.tok.next();
+					# print("String", t)
+					tn = next(self.tok);
 					if not tn.isstring():
-						raise SyntaxError, self.tok.lex.lineNum;
-					t = self.tok.next();
+						raise SyntaxError(self.tok.lex.lineNum);
+					t = next(self.tok);
 					if not t.isequal():
-						raise SyntaxError, self.tok.lex.lineNum;
-					tv = self.tok.next();
+						raise SyntaxError(self.tok.lex.lineNum);
+					tv = next(self.tok);
 					if not tv.isstring():
-						raise SyntaxError, self.tok.lex.lineNum;
+						raise SyntaxError(self.tok.lex.lineNum);
 					# insert string into the string table
 					self.bibtex.insertAbbrev(tn.val, strstrip(tv.val));
 					#print >> sys.stderr, "string", tn.val, tv.val
-					t = self.tok.next();
+					t = next(self.tok);
 					if not t.isdelimR():
-						raise SyntaxError, self.tok.lex.lineNum;
+						raise SyntaxError(self.tok.lex.lineNum);
 				elif t.val.lower() == 'comment':
-					depth = 0;
+					# print("COMMENT")
+					depth = 0
 					while True:
-						tn = self.tok.next();
+						
+						tn = next(self.tok);
+						# print("Stuck", tn, depth)
 						if t.isdelimL():
 							depth += 1;
 						if t.isdelimR():
 							depth -= 1;
-							if depth == 0:
-								break;
+						if depth == 0:
+							break;
 				else:
+					# print("PARSER NORMAL REFERENCE DETECTED")
 					# NOT A STRING or COMMENT ENTRY
 					# assume a normal reference type
 
 					# get the cite key
-					ck = self.tok.next();
+					ck = next(self.tok);
 					if not ck.isstring():
-						raise SyntaxError, self.tok.lex.lineNum;
+						raise SyntaxError(self.tok.lex.lineNum);
 
 					#print >> sys.stderr, t.val, ck.val
 					be = BibTeXEntry(ck.val, self.bibtex);
 					be.setType(t.val);
 
 					# get the comma
-					ck = self.tok.next();
+					ck = next(self.tok);
 					if not ck.iscomma():
-						raise SyntaxError, self.tok.lex.lineNum;
+						raise SyntaxError(self.tok.lex.lineNum);
 
 					# get the field value pairs
 					for tf in self.tok:
+						# print(tf)
 						# allow for poor syntax with comma before
 						# end brace
 						if tf.isdelimR():
 							break;
 
 						if not tf.isstring():
-							raise SyntaxError, self.tok.lex.lineNum;
-						t = self.tok.next();
+							raise SyntaxError(self.tok.lex.lineNum);
+						t = next(self.tok);
 						if not t.isequal():
-							raise SyntaxError, self.tok.lex.lineNum;
-						ts = self.tok.next();
+							raise SyntaxError(self.tok.lex.lineNum);
+						ts = next(self.tok);
 						if not ts.isstring():
-							raise SyntaxError, self.tok.lex.lineNum;
+							raise SyntaxError(self.tok.lex.lineNum);
 						#print >> sys.stderr, "  ", tf.val, " := ", ts.val;
 						be.setField(tf.val, strstrip(ts.val));
 
@@ -432,25 +443,27 @@ class BibTeX(Bibliography.Bibliography):
 							self.bibtex.insertAbbrev(ts.val, None);
 							#print >> sys.stderr, "putting unresolved abbrev %s into dict" % ts.val;
 
-						t = self.tok.next();
+						t = next(self.tok);
 						if t.iscomma():
 							continue;
 						elif t.isdelimR():
 							break;
 						else:
-							raise SyntaxError, self.tok.lex.lineNum;
+							raise SyntaxError(self.tok.lex.lineNum);
 
 
 					self.bibtex.insertEntry(be, ignore);
-				return;
+				return
 
 		bibparser = BibParser(s, self);
 		bibcount = 0;
+		# print(bibparser)
 		try:
 			for be in bibparser:
+				# print("ITERATING SHIT", be)
 				bibcount += 1;
 				pass;
-		except SyntaxError, err:
-			print "Syntax error at line " + str(err);
-
+		except SyntaxError as e: 
+			print(e)
+		# print("Bibcount", bibcount)
 		return bibcount;

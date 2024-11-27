@@ -33,10 +33,11 @@
 import string;
 import BibEntry;
 import urllib;
-import urlparse;
+from urllib.parse import urlparse
 import os;
 import os.path;
 import sys;
+from functools import cmp_to_key
 
 NoSuchFile = "No such file";
 
@@ -50,29 +51,31 @@ class Bibliography:
 		if filename == '-':
 			self.filename = "stdin";
 			return sys.stdin;
-		urlbits = urlparse.urlparse('~/lib/bib/z.bib');
+		urlbits = urlparse('~/lib/bib/z.bib');
 		if urlbits[0]:
 			# path is a URL
 			fp = urllib.urlopen(filename);
 			self.filename = filename;
 		else:
 			# path is a local file
-			path = os.environ['BIBPATH'];
-			for p in string.split(path, os.pathsep):
-				f = os.path.join(p, filename);
-				if os.path.isfile(f):
-					break;
-			else:
-				raise NoSuchFile;
+			## commented out
+			# path = os.environ['BIBPATH']; 
+			# for p in string.split(path, os.pathsep):
+			# 	f = os.path.join(p, filename);
+			# 	if os.path.isfile(f):
+			# 		break;
+			# else:
+			# 	raise NoSuchFile;
 
-			fp = open(f, "r");
-			home = os.path.expanduser('~');
-			f2 = os.path.abspath(f);
-			common = os.path.commonprefix([home, f2]);
-			if common:
-				self.filename = "~" + f2[len(common):]
-			else:
-				self.filename = f;
+			fp = open(filename, "r");
+			self.filename = filename
+			# home = os.path.expanduser('~');
+			# f2 = os.path.abspath(f);
+			# common = os.path.commonprefix([home, f2]);
+			# if common:
+			# 	self.filename = "~" + f2[len(common):]
+			# else:
+			# 	self.filename = f;
 
 			return fp;
 
@@ -96,9 +99,10 @@ class Bibliography:
 		key = be.getKey();
 		if key in [x.key for x in self.keyList]:
 			if not ignore:
-				print >> sys.stderr, "key %s already in dictionary" % (key)
+				print("key %s already in dictionary" % (key))
 			return False;
 		self.keyList.append(be);
+		# print("Added ", be, " to key list")
 		return True;
 
 	def insertAbbrev(self, abbrev, value):
@@ -147,7 +151,12 @@ class Bibliography:
 
 	def sort(self, sortfunc):
 		# turn the dictionary of entries into a list so we can sort it
-		self.keyList.sort(sortfunc);
+		# print(self.keyList)
+		# input("BLAH")
+		
+		sorted(self.keyList, key=cmp_to_key(sortfunc))
+		for key_item in self.keyList:
+			print(key_item)
 
 
 	# return list of all bibentry's that match the search spec
